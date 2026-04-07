@@ -79,7 +79,28 @@ function jfb_paystack_decrypt_key( string $value ): string {
 register_activation_hook( __FILE__, 'jfb_paystack_check_dependencies' );
 
 function jfb_paystack_check_dependencies() {
-    if ( ! class_exists( 'Jet_Form_Builder' ) ) {
+    // class_exists() is unreliable here — JetFormBuilder registers its main class
+    // inside a plugins_loaded callback, so it is not yet in memory when our
+    // activation hook fires. Instead, read the active plugins list from the database
+    // directly, which is always available regardless of load order.
+    if ( ! function_exists( 'is_plugin_active' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
+
+    $active = array_merge(
+        (array) get_option( 'active_plugins', [] ),
+        is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', [] ) ) : []
+    );
+
+    $jfb_active = false;
+    foreach ( $active as $plugin_file ) {
+        if ( false !== strpos( $plugin_file, 'jet-form-builder' ) ) {
+            $jfb_active = true;
+            break;
+        }
+    }
+
+    if ( ! $jfb_active ) {
         deactivate_plugins( plugin_basename( __FILE__ ) );
         wp_die(
             esc_html__( 'JFB Paystack Gateway requires JetFormBuilder to be installed and activated.', 'jfb-paystack-gateway' ),
