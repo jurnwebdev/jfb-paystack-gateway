@@ -113,7 +113,10 @@ function jfb_paystack_check_dependencies() {
 // ── Soft dependency notice (if JFB is deactivated after our plugin is active) ─
 add_action( 'admin_notices', 'jfb_paystack_dependency_notice' );
 function jfb_paystack_dependency_notice() {
-    if ( class_exists( 'Jet_Form_Builder' ) ) {
+    // JetFormBuilder's public API is the jet_form_builder() function.
+    // Its main class is namespaced (\Jet_Form_Builder\Plugin), so
+    // class_exists('Jet_Form_Builder') is always false and cannot be used.
+    if ( function_exists( 'jet_form_builder' ) ) {
         return;
     }
     echo '<div class="notice notice-error"><p>';
@@ -123,11 +126,13 @@ function jfb_paystack_dependency_notice() {
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
-add_action( 'plugins_loaded', 'jfb_paystack_init' );
+// Priority 20 ensures we run after JetFormBuilder (priority 10) has finished
+// registering its classes and the jet_form_builder() function is available.
+add_action( 'plugins_loaded', 'jfb_paystack_init', 20 );
 
 function jfb_paystack_init() {
-    // Bail silently if JFB isn't loaded yet.
-    if ( ! class_exists( 'Jet_Form_Builder' ) ) {
+    // Bail silently if JFB hasn't initialised yet.
+    if ( ! function_exists( 'jet_form_builder' ) ) {
         return;
     }
 
