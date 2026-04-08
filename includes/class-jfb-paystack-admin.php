@@ -37,14 +37,34 @@ class JFB_Paystack_Admin {
     }
 
     public function sanitize_keys( $input ) {
-        $public     = isset( $input['public'] ) ? sanitize_text_field( $input['public'] ) : '';
-        $raw_secret = isset( $input['secret'] ) ? sanitize_text_field( $input['secret'] ) : '';
+        $public     = isset( $input['public'] ) ? sanitize_text_field( trim( $input['public'] ) ) : '';
+        $raw_secret = isset( $input['secret'] ) ? sanitize_text_field( trim( $input['secret'] ) ) : '';
+
+        // Validate public key format — must start with pk_test_ or pk_live_.
+        if ( ! empty( $public ) && ! preg_match( '/^pk_(test|live)_/', $public ) ) {
+            add_settings_error(
+                'jfb_paystack_keys',
+                'invalid_public_key',
+                __( 'Invalid Public Key format. It should start with pk_test_ or pk_live_. Check you haven\'t pasted the secret key here by mistake.', 'jfb-paystack-gateway' )
+            );
+            $public = '';
+        }
+
+        // Validate secret key format — must start with sk_test_ or sk_live_.
+        if ( ! empty( $raw_secret ) && ! preg_match( '/^sk_(test|live)_/', $raw_secret ) ) {
+            add_settings_error(
+                'jfb_paystack_keys',
+                'invalid_secret_key',
+                __( 'Invalid Secret Key format. It should start with sk_test_ or sk_live_. Check you haven\'t pasted the public key here by mistake.', 'jfb-paystack-gateway' )
+            );
+            $raw_secret = '';
+        }
 
         if ( '' !== $raw_secret ) {
             // Encrypt the incoming plain-text secret key before persisting.
             $secret = jfb_paystack_encrypt_key( $raw_secret );
         } else {
-            // Blank submission — preserve whichever encrypted value is already stored.
+            // Blank submission (or failed validation) — preserve existing encrypted value.
             $existing = get_option( 'jfb_paystack_keys', [] );
             $secret   = $existing['secret'] ?? '';
         }

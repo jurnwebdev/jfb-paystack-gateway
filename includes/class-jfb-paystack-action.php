@@ -28,6 +28,12 @@ class JFB_Paystack_Action extends \Jet_Form_Builder\Actions\Types\Base {
         $public = $keys['public'] ?? '';
 
         if ( empty( $secret ) || empty( $public ) ) {
+            error_log( '[JFB Paystack] Action failed: API keys not configured. Go to Settings → JFB Paystack and save your keys.' );
+            throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
+        }
+
+        if ( substr( $secret, 0, 4 ) === 'enc:' ) {
+            error_log( '[JFB Paystack] DECRYPTION FAILED — the encrypted blob is being sent to Paystack instead of the real key. This usually means AUTH_KEY in wp-config.php changed after the keys were saved. Re-save your API keys in Settings → JFB Paystack.' );
             throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
         }
 
@@ -36,6 +42,7 @@ class JFB_Paystack_Action extends \Jet_Form_Builder\Actions\Types\Base {
         $amount_field_name = $this->settings['amount_field'] ?? '';
 
         if ( empty( $email_field_name ) || empty( $amount_field_name ) ) {
+            error_log( '[JFB Paystack] Action failed: email_field or amount_field not configured in the action settings.' );
             throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
         }
 
@@ -46,7 +53,21 @@ class JFB_Paystack_Action extends \Jet_Form_Builder\Actions\Types\Base {
         $amount_clean = preg_replace( '/[^\d\.]/', '', $amount_raw );
         $amount_kobo  = (int) round( floatval( $amount_clean ) * 100 );
 
-        if ( empty( $email ) || $amount_kobo <= 0 ) {
+        if ( empty( $email ) ) {
+            error_log( sprintf(
+                '[JFB Paystack] Action failed: email field "%s" is empty or not found in the form submission. Available fields: %s',
+                $email_field_name,
+                implode( ', ', array_keys( $request ) )
+            ) );
+            throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
+        }
+
+        if ( $amount_kobo <= 0 ) {
+            error_log( sprintf(
+                '[JFB Paystack] Action failed: amount field "%s" resolved to 0 kobo (raw value: "%s"). Check the field name matches your form.',
+                $amount_field_name,
+                $amount_raw
+            ) );
             throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
         }
 
@@ -72,15 +93,28 @@ class JFB_Paystack_Action extends \Jet_Form_Builder\Actions\Types\Base {
             ],
             'body'    => wp_json_encode( $body ),
             'timeout' => 15,
+            'sslverify' => true,
         ] );
 
         if ( is_wp_error( $res ) ) {
+            error_log( '[JFB Paystack] Could not reach Paystack API: ' . $res->get_error_message() );
             throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
         }
 
+        $http_code     = wp_remote_retrieve_response_code( $res );
         $response_body = json_decode( wp_remote_retrieve_body( $res ), true );
 
+        // Paystack returns status:false on invalid keys, bad email, etc.
+        // Log the full message so the admin can see exactly what went wrong.
         if ( empty( $response_body['status'] ) || empty( $response_body['data']['access_code'] ) ) {
+            $paystack_message = $response_body['message'] ?? 'No message returned';
+            error_log( sprintf(
+                '[JFB Paystack] Paystack initialization failed (HTTP %d): %s — email: %s, amount_kobo: %d',
+                $http_code,
+                $paystack_message,
+                $email,
+                $amount_kobo
+            ) );
             throw new \Jet_Form_Builder\Exceptions\Action_Exception( 'failed' );
         }
 

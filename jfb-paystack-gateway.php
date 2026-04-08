@@ -3,11 +3,11 @@
  * Plugin Name:       JFB Paystack Gateway
  * Plugin URI:        https://github.com/your-username/jfb-paystack-gateway
  * Description:       Adds a native Paystack Inline Checkout action to JetFormBuilder, with server-side verification and post-payment action support (redirects, emails, CCT updates).
- * Version:           1.0.0
+ * Version:           1.0.3
  * Requires at least: 6.0
  * Requires PHP:      7.4
- * Author:            Your Name
- * Author URI:        https://yourwebsite.com
+ * Author:            Tobi John
+ * Author URI:        https://tobijohn.com
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       jfb-paystack-gateway
