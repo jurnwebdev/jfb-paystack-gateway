@@ -3,7 +3,7 @@
  * Plugin Name:       JFB Paystack Gateway
  * Plugin URI:        https://github.com/johnero27/jfb-paystack-gateway
  * Description:       Adds Paystack as a native JetFormBuilder payment gateway with server-side verification, full macro support, and post-payment action support.
- * Version:           2.1.7
+ * Version:           3.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Tobi John
